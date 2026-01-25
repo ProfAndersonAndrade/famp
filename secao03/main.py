@@ -3,6 +3,8 @@ from fastapi import HTTPException
 from fastapi import status
 from fastapi.responses import JSONResponse
 from fastapi import Response
+from fastapi import Path, Query, Header
+from typing import Optional
 
 from models import Curso
 
@@ -30,7 +32,10 @@ async def get_cursos():
 
 
 @app.get('/cursos/{curso_id}')
-async def get_curso(curso_id:int):
+async def get_curso(curso_id:int = Path(...,title='ID do curso',
+                                        description='Deve ser entre 1 e 2',
+                                        gt=0,
+                                        lt=3)):
     try:
         curso = cursos[curso_id]
         return curso
@@ -42,7 +47,7 @@ async def get_curso(curso_id:int):
 @app.post('/cursos', status_code=status.HTTP_201_CREATED)
 async def post_curso(curso: Curso):
     next_id: int = len(cursos)+1    
-    cursos[next_id] = curso
+    cursos[next_id] = curso # pyright: ignore[reportArgumentType]
     del curso.id
     return curso
 
@@ -50,7 +55,7 @@ async def post_curso(curso: Curso):
 @app.put('/cursos/{curso_id}')
 async def put_curso(curso_id:int, curso: Curso):
     if curso_id in cursos:
-        cursos[curso_id] = curso
+        cursos[curso_id] = curso # type: ignore
         del curso.id
         return curso
     else:
@@ -68,11 +73,20 @@ async def delete_curso(curso_id:int):
                             detail=f'Não existe um curso com o id {curso_id}')
 
 
+@app.get('/calculadora')
+async def calcular(a:int,b:int,c: Optional[int] = None):
+    soma = a+b
+    if c:
+        soma += c
+
+    return {"Resultado": soma}
+
+
 if __name__ == '__main__':
     import uvicorn
 
     uvicorn.run('main:app', 
-                host='0.0.0.0', 
+                host='127.0.0.1', 
                 port=8000,
                 reload=True 
             )
