@@ -37,15 +37,39 @@ Na aula 20 fizemos um exemplo de uma função com sleep(1) que rodava antes do g
 ' ' ' ' '└── usuario_router.py
 
 - No main.py organizo as rotas:
-`app = FastAPI()`
-`app.include_router(curso_router.router, tags=['cursos'])`
-`app.include_router(usuario_router.router, tags=['usuarios'])`
+```
+app = FastAPI()
+
+app.include_router(curso_router.router, tags=['cursos'])
+app.include_router(usuario_router.router, tags=['usuarios'])
+```
 
 - Nos routers configuramos os @router:
-`from fastapi import APIRouter`
-`router = APIRouter()`
-`@router.get('/api/v1/cursos')`
-`async def get_cursos():`
-`____return {'info':"Todos os cursos"}`
+```
+from fastapi import APIRouter
+
+router = APIRouter()
+
+@router.get('/api/v1/cursos')
+async def get_cursos():
+    return {'info':"Todos os cursos"}
+```
 
 ### Validação pydantic
+
+- No models.py podemos fazer validações dos atributos,
+indicando limites: 
+
+```
+@field_validator('titulo', check_fields=False)
+    def validar_titulo(cls, value:str):
+        palavras = value.split(' ')
+        if len(palavras) < 3:
+            raise ValueError('O título deve ter pelo menos 3 palavras')
+        if value.islower():
+            raise ValueError('O título deve ser capitalizado.') 
+```
+
+
+
+
