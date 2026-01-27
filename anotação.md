@@ -77,13 +77,83 @@ indicando limites:
 - A estrutura de pastas será essa:
 
 seção04
-├── api/
+├── api
 ├── core/
 ├── criar_tabelas.py
 ├── main.py
 ├── models/
 ├── requirements.txt
 └── schemas/
+
+- Na pasta core criamos os arquivos deps.py, configs.py, base.py e database.py
+- No configs.py:
+```
+from pydantic_settings import BaseSettings
+from sqlalchemy.orm import declarative_base
+
+class Settings(BaseSettings):
+    """
+    Configurações gerais usadas na aplicação
+    """
+    API_V1_STR : str = '/api/v1'
+    DB_URL: str = 'postgresql+asyncpg://user:password@localhost:5432/faculdade'
+    DBBaseModel = declarative_base()
+
+    class Config:
+        case_sensitive = True
+
+settings = Settings()
+```
+-No base.py:
+```
+from sqlalchemy.orm import DeclarativeBase
+
+class Base(DeclarativeBase):
+    pass
+```
+- No database.py:
+```
+from sqlalchemy.ext.asyncio import (create_async_engine, 
+                                    AsyncEngine, 
+                                    AsyncSession, 
+                                    async_sessionmaker)
+
+from core.configs import settings
+
+engine: AsyncEngine = create_async_engine(settings.DB_URL)
+
+Session = async_sessionmaker(
+    bind= engine,
+    autoflush=False,
+    expire_on_commit=False,
+    class_=AsyncSession,
+)
+```
+- No deps.py (curso desatualizado, precisei pesquisar a nova forma do SQLAlchemy)
+```
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession
+from core.database import Session
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with Session() as session:
+        yield session
+```
+- Na pasta models criamos o __all_models.py e p curso_model.py
+- No curso_model.py:
+```
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Integer, String
+from core.base import Base
+
+class CursoModel(Base):
+    __tablename__ = "cursos"
+
+    id: Mapped[int] = mapped_column(Integer,primary_key=True)
+    titulo: Mapped[str] = mapped_column(String(100))
+    aulas: Mapped[int] = mapped_column(Integer)
+    horas: Mapped[int] = mapped_column(Integer)
+```
 
 
 
