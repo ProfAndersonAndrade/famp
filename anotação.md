@@ -70,6 +70,20 @@ indicando limites:
             raise ValueError('O título deve ser capitalizado.') 
 ```
 
+## Seção 04
+
+### Módulo Core
+
+- A estrutura de pastas será essa:
+
+seção04
+├── api/
+├── core/
+├── criar_tabelas.py
+├── main.py
+├── models/
+├── requirements.txt
+└── schemas/
 
 
 
