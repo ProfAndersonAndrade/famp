@@ -31,9 +31,56 @@ async def post_curso(curso: CursoSchema, db: AsyncSession = Depends(get_session)
 
 
 # GET cursos
-@router.get('/', response_model=List[CursoSchema])
+@router.get('/', response_model=List[CursoSchema], status_code=status.HTTP_200_OK)
 async def get_cursos(db: AsyncSession = Depends(get_session)):
     result = await db.execute(select(CursoModel))
     cursos = result.scalars().all()
 
     return cursos
+
+
+# GET curso
+@router.get('/{curso_id}', status_code=status.HTTP_200_OK, response_model=CursoSchema)
+async def get_curso(curso_id:int, db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(CursoModel).where(CursoModel.id == curso_id))
+    curso = result.scalar_one_or_none()
+
+    if curso:
+        return curso
+    else:
+        raise HTTPException(detail='Curso não encontrado!',
+                            status_code=status.HTTP_404_NOT_FOUND)
+
+
+# PUT curso
+@router.put('/{curso_id}', status_code=status.HTTP_200_OK, response_model=CursoSchema)
+async def put_curso(curso_id:int, curso:CursoSchema ,db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(CursoModel).where(CursoModel.id == curso_id))
+    curso_up = result.scalar_one_or_none()
+
+    if curso_up:
+        curso_up.titulo = curso.titulo
+        curso_up.aulas = curso.aulas
+        curso_up.horas = curso.horas
+
+        await db.commit()
+        return curso_up
+    else:
+        raise HTTPException(detail='Curso não encontrado!',
+                            status_code=status.HTTP_404_NOT_FOUND)
+    
+
+# DELETE curso
+@router.delete('/{curso_id}', status_code=status.HTTP_200_OK, response_model=CursoSchema)
+async def delete_curso(curso_id:int, db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(CursoModel).where(CursoModel.id == curso_id))
+    curso_del = result.scalar_one_or_none()
+
+    if curso_del:
+        await db.delete(curso_del)
+        await db.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    else:
+        raise HTTPException(detail='Curso não encontrado!',
+                            status_code=status.HTTP_404_NOT_FOUND)
+

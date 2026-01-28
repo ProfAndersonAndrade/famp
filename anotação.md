@@ -177,7 +177,17 @@ class CursoSchema(SCBaseModel):
     titulo: str
     aulas: int
     horas: int
+    from typing import Optional
+from pydantic import BaseModel as SCBaseModel
+from pydantic import ConfigDict
 
-    class Config:
-        orm_mode = True
+class CursoSchema(SCBaseModel):
+    id: Optional[int] = None
+    titulo: str
+    aulas: int
+    horas: int
+    model_config = ConfigDict(from_attributes=True)
 ```
+
+
+
