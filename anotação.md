@@ -37,7 +37,8 @@ Na aula 20 fizemos um exemplo de uma função com sleep(1) que rodava antes do g
 ' ' ' ' '└── usuario_router.py
 
 - No main.py organizo as rotas:
-```
+
+```python
 app = FastAPI()
 
 app.include_router(curso_router.router, tags=['cursos'])
@@ -45,7 +46,8 @@ app.include_router(usuario_router.router, tags=['usuarios'])
 ```
 
 - Nos routers configuramos os @router:
-```
+
+```python
 from fastapi import APIRouter
 
 router = APIRouter()
@@ -58,9 +60,9 @@ async def get_cursos():
 ### Validação pydantic
 
 - No models.py podemos fazer validações dos atributos,
-indicando limites: 
+indicando limites:
 
-```
+```python
 @field_validator('titulo', check_fields=False)
     def validar_titulo(cls, value:str):
         palavras = value.split(' ')
@@ -87,7 +89,8 @@ seção04
 
 - Na pasta core criamos os arquivos deps.py, configs.py, base.py e database.py
 - No configs.py:
-```
+
+```python
 from pydantic_settings import BaseSettings
 from sqlalchemy.orm import declarative_base
 
@@ -104,15 +107,19 @@ class Settings(BaseSettings):
 
 settings = Settings()
 ```
+
 -No base.py:
-```
+
+```python
 from sqlalchemy.orm import DeclarativeBase
 
 class Base(DeclarativeBase):
     pass
 ```
+
 - No database.py:
-```
+
+```python
 from sqlalchemy.ext.asyncio import (create_async_engine, 
                                     AsyncEngine, 
                                     AsyncSession, 
@@ -129,8 +136,10 @@ Session = async_sessionmaker(
     class_=AsyncSession,
 )
 ```
+
 - No deps.py (curso desatualizado, precisei pesquisar a nova forma do SQLAlchemy)
-```
+
+```python
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import Session
@@ -139,9 +148,11 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with Session() as session:
         yield session
 ```
+
 - Na pasta models criamos o __all_models.py e p curso_model.py
 - No curso_model.py:
-```
+
+```python
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import Integer, String
 from core.base import Base
@@ -155,5 +166,18 @@ class CursoModel(Base):
     horas: Mapped[int] = mapped_column(Integer)
 ```
 
+- Na pasta schemas criamos o arquivo curso_schema.py (abaixo o código). Ela parece o curso_model.py, mas em models lidamos na comunicação dos dados no banco de dados e no schema a comunicação de json com os dados, a validação deles. Resumindo validamos a entrada dos dados com schemas e armazenamos com o models:
 
+``` python
+from typing import Optional
+from pydantic import BaseModel as SCBaseModel
 
+class CursoSchema(SCBaseModel):
+    id: Optional[int]
+    titulo: str
+    aulas: int
+    horas: int
+
+    class Config:
+        orm_mode = True
+```

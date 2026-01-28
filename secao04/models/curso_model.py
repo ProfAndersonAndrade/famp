@@ -9,4 +9,3 @@ class CursoModel(Base):
     titulo: Mapped[str] = mapped_column(String(100))
     aulas: Mapped[int] = mapped_column(Integer)
     horas: Mapped[int] = mapped_column(Integer)
-
