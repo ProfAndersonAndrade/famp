@@ -81,11 +81,11 @@ indicando limites:
 seção04
 ├── api/
 ├── core/
+├── models/
+├── schemas/
 ├── criar_tabelas.py
 ├── main.py
-├── models/
-├── requirements.txt
-└── schemas/
+└── requirements.txt
 
 - Na pasta core criamos os arquivos deps.py, configs.py, base.py e database.py. A ideia deles é configurar o banco e criar as tabelas, para isso vamos importar estes arquivos no criar_tabelas.py.
 
@@ -353,4 +353,110 @@ if __name__ == '__main__':
                 reload=True, 
                 log_level='info'
             )
+```
+
+## Seção 05
+
+- Essa seção é voltado ao ORM SQLModel, dos mesmo criadores do FastAPI. Logo uma diferença clara é que no SQLAlchemy separamos o models dos schemas, no SQLModel só tem o models.
+
+- Estrutura:
+
+secao05
+├── api/
+├── core/
+├── models/
+├── criar_tabelas.py
+├── main.py
+└── requirements.txt
+
+### Módulo core
+
+- O config.py serve para criar os settings e URL tanto de BD como da rota (api/v1/...).
+
+- A estrutura de pastas será essa:
+
+seção04
+├── api/
+├── core/
+├── models/
+├── schemas/
+├── criar_tabelas.py
+├── main.py
+└── requirements.txt
+
+- Na pasta core criamos os arquivos deps.py, configs.py, base.py e database.py. A ideia deles é configurar o banco e criar as tabelas, para isso vamos importar estes arquivos no criar_tabelas.py.
+
+- No configs.py:
+
+```python
+from pydantic_settings import BaseSettings
+
+class Settings(BaseSettings):
+    API_V1_STR: str = "/api/v1"
+    DB_URL: str = "postgresql+asyncpg://user:password@localhost:5432/faculdade"
+
+    class Config:
+        case_sensitive = True
+
+settings = Settings()
+```
+
+- No database.py:
+
+```python
+from sqlalchemy.ext.asyncio import (create_async_engine, 
+                                    AsyncEngine, 
+                                    AsyncSession, 
+                                    async_sessionmaker)
+
+from core.configs import settings
+
+engine: AsyncEngine = create_async_engine(settings.DB_URL)
+
+Session = async_sessionmaker(
+    bind= engine,
+    autoflush=False,
+    expire_on_commit=False,
+    class_=AsyncSession,
+)
+```
+
+- No deps.py (curso desatualizado, precisei pesquisar a nova forma do SQLAlchemy)
+
+```python
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession
+from core.database import Session
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with Session() as session:
+        yield session
+```
+
+- Não muda muito do SQLAlchemy
+
+### Módulo models aula 39
+
+- Na pasta models criamos o __all_models.py e p curso_model.py
+- No curso_model.py:
+
+```python
+from typing import Optional
+
+from sqlmodel import Field, SQLModel
+
+class CursoModel(SQLModel, table=True):
+    __tablename__: str = 'cursos'
+
+    id:Optional[int] = Field(default=None, primary_key=True)
+    titulo: str
+    aulas: int
+    horas: int
+```
+
+- O table=True interno é para diferenciar um schema (que nao vira tabela) para um model (o True é para criar tabela). Por isso aqui teremos models e schemas, diferenciando pelo table.
+- No "all" puxaremos todos os models, só puxaremos o curso_model aqui:
+
+```python
+from models.curso_model import CursoModel
 ```
