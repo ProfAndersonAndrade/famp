@@ -1,4 +1,3 @@
-from core.configs import settings
 from core.database import engine
 from core.base import Base
 

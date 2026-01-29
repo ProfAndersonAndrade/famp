@@ -79,7 +79,7 @@ indicando limites:
 - A estrutura de pastas será essa:
 
 seção04
-├── api
+├── api/
 ├── core/
 ├── criar_tabelas.py
 ├── main.py
@@ -87,20 +87,16 @@ seção04
 ├── requirements.txt
 └── schemas/
 
-- Na pasta core criamos os arquivos deps.py, configs.py, base.py e database.py
+- Na pasta core criamos os arquivos deps.py, configs.py, base.py e database.py. A ideia deles é configurar o banco e criar as tabelas, para isso vamos importar estes arquivos no criar_tabelas.py.
+
 - No configs.py:
 
 ```python
 from pydantic_settings import BaseSettings
-from sqlalchemy.orm import declarative_base
 
 class Settings(BaseSettings):
-    """
-    Configurações gerais usadas na aplicação
-    """
-    API_V1_STR : str = '/api/v1'
-    DB_URL: str = 'postgresql+asyncpg://user:password@localhost:5432/faculdade'
-    DBBaseModel = declarative_base()
+    API_V1_STR: str = "/api/v1"
+    DB_URL: str = "postgresql+asyncpg://user:password@localhost:5432/faculdade"
 
     class Config:
         case_sensitive = True
@@ -171,14 +167,6 @@ class CursoModel(Base):
 ``` python
 from typing import Optional
 from pydantic import BaseModel as SCBaseModel
-
-class CursoSchema(SCBaseModel):
-    id: Optional[int]
-    titulo: str
-    aulas: int
-    horas: int
-    from typing import Optional
-from pydantic import BaseModel as SCBaseModel
 from pydantic import ConfigDict
 
 class CursoSchema(SCBaseModel):
@@ -189,5 +177,180 @@ class CursoSchema(SCBaseModel):
     model_config = ConfigDict(from_attributes=True)
 ```
 
+### Módulo models - aula 39
+
+- Na pasta models criaremosos arquivos __all_models.py e o curso_model.py. No "all" puxaremos todos os models, só puxaremos o curso_model aqui:
+
+```python
+from models.curso_model import CursoModel
+```
+
+- No curso_model.py modelamos o que entra no BD:
+
+```python
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Integer, String
+from core.base import Base
+
+class CursoModel(Base):
+    __tablename__ = "cursos"
+
+    id: Mapped[int] = mapped_column(Integer,primary_key=True)
+    titulo: Mapped[str] = mapped_column(String(100))
+    aulas: Mapped[int] = mapped_column(Integer)
+    horas: Mapped[int] = mapped_column(Integer)
+```
+
+### Criando tabelas
+
+- No arquivo por fora das pastas criar_tabelas.py:
+
+```python
+from core.database import engine
+from core.base import Base
+
+async def create_tables() -> None:
+    import models.__all_models
+    print('Criando tabelas no banco de dados')
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    print('Tabelas criadas com sucesso!')
+
+if __name__ == '__main__':
+    import asyncio
+
+    asyncio.run(create_tables())
+```
+
+### Módulo api - aula 41 e 42
+
+- Na pasta api criaremos a pasta v1.
+- Dentro da pasta v1 criaremos a pasta endpoints e o arquivo api.py.
+- A ideia é configurar as rotas dentro de endpoints com um arquivo com o nome da rota, no caso será curso.py, e no api.py incluímos as rotas importando dos arquivos de endpoints:
+
+```python
+from typing import List
+
+from fastapi import (APIRouter, 
+                     status, 
+                     Depends, 
+                     HTTPException, 
+                     Response)
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from models.curso_model import CursoModel
+from schemas.curso_schema import CursoSchema
+from core.deps import get_session
+
+router = APIRouter()
+
+# POST curso
+@router.post('/', 
+             status_code=status.HTTP_201_CREATED, 
+             response_model=CursoSchema)
+async def post_curso(curso: CursoSchema, db: AsyncSession = Depends(get_session)):
+    novo_curso: CursoModel = CursoModel(titulo=curso.titulo, 
+                                        aulas= curso.aulas,
+                                        horas= curso.horas)
+    
+    db.add(novo_curso)
+    await db.commit()
+    await db.refresh(novo_curso)
+
+    return novo_curso
 
 
+# GET cursos
+@router.get('/', response_model=List[CursoSchema], status_code=status.HTTP_200_OK)
+async def get_cursos(db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(CursoModel))
+    cursos = result.scalars().all()
+
+    return cursos
+
+
+# GET curso
+@router.get('/{curso_id}', status_code=status.HTTP_200_OK, response_model=CursoSchema)
+async def get_curso(curso_id:int, db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(CursoModel).where(CursoModel.id == curso_id))
+    curso = result.scalar_one_or_none()
+
+    if curso:
+        return curso
+    else:
+        raise HTTPException(detail='Curso não encontrado!',
+                            status_code=status.HTTP_404_NOT_FOUND)
+
+
+# PUT curso
+@router.put('/{curso_id}', status_code=status.HTTP_200_OK, response_model=CursoSchema)
+async def put_curso(curso_id:int, curso:CursoSchema ,db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(CursoModel).where(CursoModel.id == curso_id))
+    curso_up = result.scalar_one_or_none()
+
+    if curso_up:
+        curso_up.titulo = curso.titulo
+        curso_up.aulas = curso.aulas
+        curso_up.horas = curso.horas
+
+        await db.commit()
+        return curso_up
+    else:
+        raise HTTPException(detail='Curso não encontrado!',
+                            status_code=status.HTTP_404_NOT_FOUND)
+    
+
+# DELETE curso
+@router.delete('/{curso_id}', status_code=status.HTTP_200_OK, response_model=CursoSchema)
+async def delete_curso(curso_id:int, db: AsyncSession = Depends(get_session)):
+    result = await db.execute(select(CursoModel).where(CursoModel.id == curso_id))
+    curso_del = result.scalar_one_or_none()
+
+    if curso_del:
+        await db.delete(curso_del)
+        await db.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    else:
+        raise HTTPException(detail='Curso não encontrado!',
+                            status_code=status.HTTP_404_NOT_FOUND)
+```
+
+- Incluímos as rotas:
+
+```python
+from fastapi import APIRouter
+from api.v1.endpoints import curso
+
+
+api_router = APIRouter()
+api_router.include_router(curso.router, prefix='/cursos', tags=['cursos'])
+# /api/v1/cursos
+```
+
+### O  main
+
+- Vamos configurar por fim o main centralizando tudo. Se api.py da pasta api/v1 centraliza as rotas, o main importa o api.py e incluir os recursos na URL e roda o projeto no terminal com o comando "python main.py" :
+
+```python
+from fastapi import FastAPI
+
+from core.configs import settings
+from api.v1.api import api_router
+
+app = FastAPI(title='Cursos API - FastAPI SQL Alchemy')
+app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+if __name__ == '__main__':
+    import uvicorn
+
+    uvicorn.run('main:app', 
+                host='127.0.0.1', 
+                port=8000,
+                reload=True, 
+                log_level='info'
+            )
+```
