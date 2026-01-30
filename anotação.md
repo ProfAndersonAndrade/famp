@@ -460,3 +460,36 @@ class CursoModel(SQLModel, table=True):
 ```python
 from models.curso_model import CursoModel
 ```
+
+### Criando tabelas SQLModel
+
+- Não muda muito do SQLAlchemy
+
+```python
+from sqlmodel import SQLModel
+
+from core.database import engine
+
+
+async def create_tables() -> None:
+    import models.__all_models
+    print('Criando as tabelas no BD...')
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.drop_all)
+        await conn.run_sync(SQLModel.metadata.create_all)
+    print('Tabelas criadas com sucesso!')
+
+
+if __name__ == '__main__':
+    import asyncio
+
+    asyncio.run(create_tables())
+```
+
+### Módulo Api
+
+- Criamos a pasta v1.
+- Dentro de v1 criamos o arquivo api.py e a pasta endpoints.
+- Dentro de endpoints criamos o curso.py
+- No curso.py:
+
